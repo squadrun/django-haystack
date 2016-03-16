@@ -63,7 +63,7 @@ class SearchChangeList(ChangeList):
 
     def get_results(self, request):
         if SEARCH_VAR not in request.GET or (len(request.GET[SEARCH_VAR]) is 0 and len(request.GET.keys()) is 1):
-            return super(FilterableSearchChangeList, self).get_results(request)
+            return super(SearchChangeList, self).get_results(request)
 
         filters = self.custom_get_filters(request)
 

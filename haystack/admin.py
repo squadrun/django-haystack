@@ -2,6 +2,8 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import re
+
 from django import template
 from django.contrib.admin.options import csrf_protect_m, ModelAdmin
 from django.contrib.admin.views.main import ChangeList, SEARCH_VAR

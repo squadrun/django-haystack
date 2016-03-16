@@ -15,6 +15,7 @@ from django.utils.translation import ungettext
 from haystack import connections
 from haystack.query import SearchQuerySet
 from haystack.utils import get_model_ct_tuple
+from haystack.inputs import Raw
 
 try:
     from django.utils.encoding import force_text

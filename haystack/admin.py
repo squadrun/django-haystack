@@ -87,7 +87,7 @@ class SearchChangeList(ChangeList):
             result_list = paginator.page(self.page_num + 1).object_list
             # Grab just the Django models, since that's what everything else is
             # expecting.
-            result_list = [result.object for result in result_list]
+            result_list = [result.object for result in result_list if result]
         except InvalidPage:
             result_list = ()
 

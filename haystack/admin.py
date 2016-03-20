@@ -10,7 +10,6 @@ from django.core.paginator import InvalidPage, Paginator
 
 from haystack import connections
 from haystack.query import SearchQuerySet
-from haystack.inputs import Raw
 
 try:
     from django.utils.encoding import force_text
@@ -68,11 +67,22 @@ class SearchChangeList(ChangeList):
         # Note that pagination is 0-based, not 1-based.
         sqs = SearchQuerySet(self.haystack_connection).models(self.model)
         if request.GET[SEARCH_VAR]:
-            sqs = sqs.filter(text=Raw('*{}*'.format(request.GET[SEARCH_VAR])))
+            sqs = sqs.auto_query(request.GET[SEARCH_VAR])
         if filters:
             sqs = sqs.filter(**filters)
 
         sqs = sqs.load_all()
+
+        # # Set ordering.
+        # ordering = self.get_ordering(request, sqs)
+        # sqs_ordering = []
+        # for field in ordering:
+        #     if field == '-pk':
+        #         field = '-model_pk'
+        #     elif field == 'pk':
+        #         field = 'model_pk'
+        #     sqs_ordering.append(field)
+        # sqs = sqs.order_by(*sqs_ordering)
 
         paginator = Paginator(sqs, self.list_per_page)
         # Get the number of objects, with admin filters applied.

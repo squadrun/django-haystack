@@ -277,7 +277,7 @@ class ElasticsearchSearchBackend(BaseSearchBackend):
                         'analyze_wildcard': True,
                         'auto_generate_phrase_queries': True,
                         'fuzzy_min_sim': FUZZY_MIN_SIM,
-                        'fuzzy_max_expansions': FUZZY_MAX_EXPANSIONS,
+                        'fuzzy_max_expansions': FUZZY_MAX_EXPANSIONS
                     },
                 },
             }

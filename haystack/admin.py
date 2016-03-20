@@ -7,6 +7,7 @@ import re
 from django.contrib.admin.options import ModelAdmin
 from django.contrib.admin.views.main import ChangeList, SEARCH_VAR
 from django.core.paginator import InvalidPage, Paginator
+from django.conf import settings
 
 from haystack import connections
 from haystack.query import SearchQuerySet
@@ -58,6 +59,34 @@ class SearchChangeList(ChangeList):
 
         return indexed_field_and_value_map
 
+    def get_ordering(self, request, queryset):
+        ordering = super(SearchChangeList, self).get_ordering(request, queryset)
+
+        if SEARCH_VAR not in request.GET or (len(request.GET[SEARCH_VAR]) is 0 and len(request.GET.keys()) is 1):
+            return ordering
+
+        default_pk_field = getattr(settings, 'HAYSTACK_ADMIN_DEFAULT_ORDER_BY_FIELD', None)
+        if default_pk_field:
+            indexed_model = connections['default'].get_unified_index().get_index(self.model)
+            indexed_fields = indexed_model.fields.keys()
+            sane_ordering = []
+
+            for field in ordering:
+                if field in ['-pk', '-id']:
+                    field = '-{}'.format(default_pk_field)
+                elif field in ['pk', 'id']:
+                    field = '{}'.format(default_pk_field)
+
+                abs_field = field.lstrip('-')
+                if abs_field in indexed_fields:
+                    sane_ordering.append(field)
+
+            ordering = sane_ordering
+        else:
+            ordering = filter(lambda x: x not in ['pk', '-pk', 'id', '-id'], ordering)
+
+        return ordering
+
     def get_results(self, request):
         if SEARCH_VAR not in request.GET or (len(request.GET[SEARCH_VAR]) is 0 and len(request.GET.keys()) is 1):
             return super(SearchChangeList, self).get_results(request)
@@ -73,16 +102,9 @@ class SearchChangeList(ChangeList):
 
         sqs = sqs.load_all()
 
-        # # Set ordering.
-        # ordering = self.get_ordering(request, sqs)
-        # sqs_ordering = []
-        # for field in ordering:
-        #     if field == '-pk':
-        #         field = '-model_pk'
-        #     elif field == 'pk':
-        #         field = 'model_pk'
-        #     sqs_ordering.append(field)
-        # sqs = sqs.order_by(*sqs_ordering)
+        # Set ordering.
+        ordering = self.get_ordering(request, sqs)
+        sqs = sqs.order_by(*ordering)
 
         paginator = Paginator(sqs, self.list_per_page)
         # Get the number of objects, with admin filters applied.

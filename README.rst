@@ -1,3 +1,9 @@
+### What is different than the original repo:
+1. Support for ordering from searches in the admin panel.
+2. Expects a string config param `HAYSTACK_ADMIN_DEFAULT_ORDER_BY_FIELD` in the admin that defines the name of the field that is storing your objects's pk. Queryset will be ordered_by accordingly.
+3. Implements a hacky way to account for filters in the admin panel. Right now only works where the filters are applied with an `__exact` lookup. 
+4. Solves [this issue](http://stackoverflow.com/questions/20430449/django-haystack-edgengramfield-given-different-results-than-elasticsearch) by setting `"analyser": 'standard'` as suggested. A boolean config param `SET_ANALYZE_STANDARD_FOR_HAYSTACK_SEARCH` is used to control the behaviour.
+
 ========
 Haystack
 ========

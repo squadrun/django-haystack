@@ -104,7 +104,7 @@ class Command(LabelCommand):
     base_options = (
         make_option('-a', '--age', action='store', dest='age',
             default=DEFAULT_AGE, type='int',
-            help='Number of hours back to consider objects new.'
+            help='Number of minutes back to consider objects new.'
         ),
         make_option('-s', '--start', action='store', dest='start_date',
             default=None, type='string',
@@ -159,7 +159,7 @@ class Command(LabelCommand):
         end_date = options.get('end_date')
 
         if age is not None:
-            self.start_date = now() - timedelta(hours=int(age))
+            self.start_date = now() - timedelta(minutes=int(age))
 
         if start_date is not None:
             from dateutil.parser import parse as dateutil_parse

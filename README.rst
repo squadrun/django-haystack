@@ -1,4 +1,5 @@
-### What is different than the original repo:
+What is different from the original repo:
+=========================================
 1. Support for ordering from searches in the admin panel.
 2. Expects a string config param `HAYSTACK_ADMIN_DEFAULT_ORDER_BY_FIELD` in the admin that defines the name of the field that is storing your objects's pk. Queryset will be ordered_by accordingly.
 3. Implements a hacky way to account for filters in the admin panel. Right now only works where the filters are applied with an `__exact` lookup. 

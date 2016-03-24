@@ -3,6 +3,7 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import re
+from dateutil.parser import parse as parse_date
 
 from django.contrib.admin.options import ModelAdmin
 from django.contrib.admin.views.main import ChangeList, SEARCH_VAR
@@ -34,30 +35,69 @@ def list_max_show_all(changelist):
 
 class SearchChangeList(ChangeList):
     def __init__(self, *args, **kwargs):
+        self.valid_lookups = ["contains", "exact", "gt", "gte", "lt", "lte", "in", "startswith"]
         self.haystack_connection = kwargs.pop('haystack_connection', 'default')
         super(SearchChangeList, self).__init__(*args, **kwargs)
 
     def custom_get_filters(self, request):
+        """
+        So we have two dicts here that we want mapped to each other:
+            1. GET Params: {"q": "stuff", "business__id__exact": 23, "user__joined_date__lte": "2015-11-23"}
+            2. Indexed field names with other field info: {"business": <Integer field stuff stuff stuff>}
+
+        Now Haystack's SQS won't take "business__id__exact" as a filter because it doesnt know what "business__id"
+        is, it knows a "business". So a filter it will expect is "business__exact".
+        This "business" field will have a "model_attr" property that should be "business__id".
+        So, we will take the GET Params from 1., remove the lookup parameter, match the remaining key to the
+        "model_attr" property of every field from 2.
+        Got it?
+        Finally we want:
+           {"business__exact": 23, "user_joined_date__lte": "2015-11-23"}
+
+        We will also remove parameters that are not indexed, because it will only throw error and not solve anything.
+        """
+
+        # Convert {"q": "stuff", "business__id__exact": 23} to:
+        # [{"business__id": {"lookup": "exact", "query": 23}}
+        model_attr__lookup__query_map_list = []
+        pattern_lookup = re.compile('^.*__(.*$)')
+        for param, query in request.GET.items():
+            try:
+                lookup = pattern_lookup.findall(param)[0]
+            except IndexError:
+                pass
+            else:
+                if lookup in self.valid_lookups:
+                    model_attr = re.sub("__{}$".format(lookup), "", param)
+                    lookup_query_map = {
+                        "lookup": lookup,
+                        "query": query
+                    }
+                    model_attr__lookup__query_map_list.append({model_attr: lookup_query_map})
+
+        # Convert {"business": <Integer field stuff stuff stuff>} to:
+        # {"business__id": "business"}
+        model_attr__indexed_field_map = {}
         indexed_model = connections['default'].get_unified_index().get_index(self.model)
-        list_filter = self.list_filter
-        # dict of filtered index name and the model attribute they map to
-        filter_name_and_model_attr_map = {}
         for name, field in indexed_model.fields.items():
-            filter_name_and_model_attr_map[name] = field.model_attr
+            model_attr__indexed_field_map[field.model_attr] = name
 
-        indexed_field_and_value_map = {}
-        pattern_exact = re.compile('__exact$')
+        # Magic
+        indexed_field__query_map = {}
+        for model_attr__lookup_query_map in model_attr__lookup__query_map_list:
+            for model_attr, lookup_query_map in model_attr__lookup_query_map.items():
+                indexed_field = model_attr__indexed_field_map.get(model_attr)
+                if indexed_field:
+                    lookup = lookup_query_map.get('lookup')
+                    query = lookup_query_map.get('query')
+                    # If its a datetime field, convert string to a datatime object, ES likes that
+                    try:
+                        query = parse_date(query)
+                    except (TypeError, ValueError):
+                        pass
+                    indexed_field__query_map["{}__{}".format(indexed_field, lookup)] = query
 
-        # remove '__exact' from all query params, and get the filtered indexed name for the resulting query param
-        # if the filtered indexed name is present in the `list_filters` for the admin class, add it to final filters
-        for query, value in request.GET.items():
-            filter_field_name = pattern_exact.sub('', query)
-            indexed_field = next((name for name, model_attr in filter_name_and_model_attr_map.items() if
-                                  model_attr == filter_field_name), None)
-            if indexed_field and indexed_field in list_filter:
-                indexed_field_and_value_map[indexed_field] = value
-
-        return indexed_field_and_value_map
+        return indexed_field__query_map
 
     def get_ordering(self, request, queryset):
         ordering = super(SearchChangeList, self).get_ordering(request, queryset)

@@ -91,10 +91,13 @@ class SearchChangeList(ChangeList):
                     lookup = lookup_query_map.get('lookup')
                     query = lookup_query_map.get('query')
                     # If its a datetime field, convert string to a datatime object, ES likes that
-                    try:
-                        query = parse_date(query)
-                    except (TypeError, ValueError):
-                        pass
+
+                    # TODO: Fix this hack for datefilter
+                    if "-" in query and ":" in query:
+                        try:
+                            query = parse_date(query)
+                        except (TypeError, ValueError):
+                            pass
                     indexed_field__query_map["{}__{}".format(indexed_field, lookup)] = query
 
         return indexed_field__query_map

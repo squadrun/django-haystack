@@ -950,3 +950,64 @@ class ElasticsearchSearchQuery(BaseSearchQuery):
 class ElasticsearchSearchEngine(BaseEngine):
     backend = ElasticsearchSearchBackend
     query = ElasticsearchSearchQuery
+    
+
+class StandardAnalyzerElasticBackend(ElasticsearchSearchBackend):
+    SET_ANALYZE_STANDARD_FOR_SEARCH = getattr(settings, 'SET_ANALYZE_STANDARD_FOR_HAYSTACK_SEARCH', False)
+    DEFAULT_SETTINGS = {
+        'settings': {
+            "analysis": {
+                "analyzer": {
+                    "ngram_analyzer": {
+                        "type": "custom",
+                        "tokenizer": "standard",
+                        "filter": ["haystack_ngram", "lowercase"]
+                    },
+                    "edgengram_analyzer": {
+                        "type": "custom",
+                        "tokenizer": "standard",
+                        "filter": ["haystack_edgengram", "lowercase"]
+                    }
+                },
+                "tokenizer": {
+                    "haystack_ngram_tokenizer": {
+                        "type": "nGram",
+                        "min_gram": 3,
+                        "max_gram": 15,
+                    },
+                    "haystack_edgengram_tokenizer": {
+                        "type": "edgeNGram",
+                        "min_gram": 1,
+                        "max_gram": 26,
+                        "side": "front"
+                    }
+                },
+                "filter": {
+                    "haystack_ngram": {
+                        "type": "nGram",
+                        "min_gram": 3,
+                        "max_gram": 15
+                    },
+                    "haystack_edgengram": {
+                        "type": "edgeNGram",
+                        "min_gram": 1,
+                        "max_gram": 26
+                    }
+                }
+            }
+        }
+    }
+
+    def build_search_kwargs(self, query_string, **kwargs):
+        search_kwargs = super(StandardAnalyzerElasticBackend, self).build_search_kwargs(query_string, **kwargs)
+        if self.SET_ANALYZE_STANDARD_FOR_SEARCH:
+            try:
+                search_kwargs['query']['filtered']['query']['query_string']['analyzer'] = 'standard'
+            except KeyError:
+                pass
+
+        return search_kwargs
+
+
+class StandardAnalyzerElasticSearchEngine(ElasticsearchSearchEngine):
+    backend = StandardAnalyzerElasticBackend

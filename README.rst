@@ -5,6 +5,7 @@ What is different from the original repo:
 3. Account for filters in the admin panel searches.
 4. Solves [this issue](http://stackoverflow.com/questions/20430449/django-haystack-edgengramfield-given-different-results-than-elasticsearch) by setting `"analyser": 'standard'` as suggested. A boolean config param `SET_ANALYZE_STANDARD_FOR_HAYSTACK_SEARCH` is used to control the behaviour.
 5. Accepts age in "minutes" instead of "hours" as an argument for "update_index" command.
+6. Added `AutoPrepareTextIndexMixin` and `StandardAnalyzerElasticSearchEngine`
 
 ========
 Haystack

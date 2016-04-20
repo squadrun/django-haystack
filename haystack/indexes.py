@@ -495,3 +495,51 @@ class ModelSearchIndex(SearchIndex):
             final_fields[f.name].set_instance_name(self.get_index_fieldname(f))
 
         return final_fields
+        
+
+class AutoPrepareTextIndexMixin(object):
+    """
+    Used with Indexed Classes to add common functions:
+    1. Prepares text to be documented using fields from the list document_fields
+    2. Gets fields to be `select_related` for efficient db querying while indexing
+    3. Defines "get_updated_field"
+    Also tries to check for these modifications and raises errors if things not implemented like they should be
+    """
+
+    def __init__(self):
+        super(AutoPrepareTextIndexMixin, self).__init__()
+        default_pk_field = getattr(settings, 'HAYSTACK_ADMIN_DEFAULT_ORDER_BY_FIELD', None)
+        if default_pk_field:
+            if default_pk_field not in self.fields.keys():
+                raise NotImplementedError('Need a field for "{0}" in {1} like so "{0} = indexes.'
+                                          'IntegerField(model_attr=\'pk\')"'.format(default_pk_field, self.__class__))
+
+        if self.get_content_field() != 'text':
+            raise NameError('The content field should be named "text" in {} or it wont be '
+                            'prepared like we want it to'.format(self.__class__))
+
+        document_fields = getattr(self, 'document_fields', None)
+        if not document_fields:
+            raise NotImplementedError('"document_fields" not specified for {}, what am I going to put in '
+                                      'the document brah?'.format(self.__class__))
+
+    def get_updated_field(self):
+        return 'updated_at'
+
+    def index_queryset(self, using=None):
+        select_related_for_index = getattr(self, 'select_related_for_index', None)
+        if select_related_for_index:
+            return self.get_model().objects.select_related(*self.select_related_for_index)
+        else:
+            return self.get_model().objects.all()
+
+    def prepare_text(self, obj):
+        document_fields = getattr(self, 'document_fields', None)
+
+        values = []
+        for field in document_fields:
+            full_field_list = field.split('__')
+            field_value = reduce(lambda acc_attr, attr: getattr(acc_attr, attr), full_field_list, obj)
+            values.append(field_value)
+
+        return ' '.join(map(unicode, values))

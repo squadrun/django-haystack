@@ -6,6 +6,7 @@ What is different from the original repo:
 4. Solves [this issue](http://stackoverflow.com/questions/20430449/django-haystack-edgengramfield-given-different-results-than-elasticsearch) by setting `"analyser": 'standard'` as suggested. A boolean config param `SET_ANALYZE_STANDARD_FOR_HAYSTACK_SEARCH` is used to control the behaviour.
 5. Accepts age in "minutes" instead of "hours" as an argument for "update_index" command.
 6. Added `AutoPrepareTextIndexMixin` and `StandardAnalyzerElasticSearchEngine`
+7. Expects an optional string config param `HAYSTACK_DJANGO_DEFAULT_DB_CONNECTION_NAME` in settings that defines the name of the database to read data from (helpful in case of master-slave configurations)
 
 ========
 Haystack

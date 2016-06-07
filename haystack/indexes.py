@@ -8,6 +8,7 @@ import warnings
 
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.six import with_metaclass
+from django.conf import settings
 
 from haystack import connection_router, connections
 from haystack.constants import DEFAULT_ALIAS, DJANGO_CT, DJANGO_ID, ID, Indexable
@@ -19,6 +20,9 @@ try:
     from django.utils.encoding import force_text
 except ImportError:
     from django.utils.encoding import force_unicode as force_text
+
+
+DEFAULT_DB_CONNECTION_NAME = getattr(settings, 'HAYSTACK_DJANGO_DEFAULT_DB_CONNECTION_NAME', None)
 
 
 class DeclarativeMetaclass(type):
@@ -182,6 +186,11 @@ class SearchIndex(with_metaclass(DeclarativeMetaclass, threading.local)):
 
         if not hasattr(index_qs, 'filter'):
             raise ImproperlyConfigured("The '%r' class must return a 'QuerySet' in the 'index_queryset' method." % self)
+
+        # Fetch data from desired database (in case of a master-slave config, to avoid errors of the form:
+        # `canceling statement due to conflict with recovery DETAIL`)
+        if DEFAULT_DB_CONNECTION_NAME is not None:
+            index_qs = index_qs.using(DEFAULT_DB_CONNECTION_NAME)
 
         # `.select_related()` seems like a good idea here but can fail on
         # nullable `ForeignKey` as well as what seems like other cases.
